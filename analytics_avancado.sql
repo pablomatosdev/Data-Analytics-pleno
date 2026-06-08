@@ -7,9 +7,9 @@ CREATE TABLE clientes (
 );
 
 CREATE TABLE transportadoras (
-    id_transportadora INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id_transportadoras INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
-    status_transportadora VARCHAR(20) DEFAULT 'Ativo'
+    status_transportadoras VARCHAR(20) DEFAULT 'Ativo'
 );
 
 CREATE TABLE pedidos (
@@ -24,14 +24,14 @@ CREATE TABLE pedidos (
 CREATE TABLE entregas (
     id_entregas INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     id_pedidos INT NOT NULL, -- Agora vinculado diretamente ao pedido correto!
-    id_transportadora INT NOT NULL,
+    id_transportadoras INT NOT NULL,
     status_entrega VARCHAR(50),
     valor_frete NUMERIC(10, 2),
     data_envio DATE,      -- Para cálculo de Lead Time
     data_entrega_efetiva DATE, -- Para cálculo de SLA e Prazo Médio
     prazo_prometido_dias INT,
     CONSTRAINT fk_entregas_pedidos FOREIGN KEY (id_pedidos) REFERENCES pedidos(id_pedidos),
-    CONSTRAINT fk_entregas_transportadoras FOREIGN KEY (id_transportadora) REFERENCES transportadoras(id_transportadora)
+    CONSTRAINT fk_entregas_transportadoras FOREIGN KEY (id_transportadoras) REFERENCES transportadoras(id_transportadoras)
 );
 
 -- DADOS DE TESTE (Massa de dados realista de E-commerce)
@@ -42,7 +42,7 @@ INSERT INTO clientes (nome, email, idade, status_cliente) VALUES
 ('Mariana Almeida', 'mariana@email.com', 23, 'Ativo'), ('Gabriel Pires', 'gabriel@email.com', 31, 'Ativo'),
 ('Lucas Martins', 'lucas@email.com', 17, 'Ativo'), ('Camila Rocha', 'camila@email.com', 48, 'Ativo');
 
-INSERT INTO transportadoras (nome, status_transportadora) VALUES  
+INSERT INTO transportadoras (nome, status_transportadoras) VALUES  
 ('LogExpress', 'Ativo'), ('Alfafretes', 'Ativo'), ('VeloCargo', 'Ativo');
 
 INSERT INTO pedidos (id_clientes, status_pedido, valor_total, data_pedido) VALUES  
@@ -55,7 +55,7 @@ INSERT INTO pedidos (id_clientes, status_pedido, valor_total, data_pedido) VALUE
 (8, 'Entregue', 95.00, '2026-05-08'), (10, 'Entregue', 850.00, '2026-05-09'),
 (10, 'Cancelado', 40.00, '2026-05-10');
 
-INSERT INTO entregas (id_pedidos, id_transportadora, status_entrega, valor_frete, data_envio, data_entrega_efetiva, prazo_prometido_dias) VALUES  
+INSERT INTO entregas (id_pedidos, id_transportadoras, status_entrega, valor_frete, data_envio, data_entrega_efetiva, prazo_prometido_dias) VALUES  
 (1, 1, 'Sucesso', 15.00, '2026-05-02', '2026-05-05', 5),
 (2, 2, 'Sucesso', 25.00, '2026-05-16', '2026-05-22', 5), -- Estourou o prazo (6 dias)
 (3, 1, 'Sucesso', 50.00, '2026-05-03', '2026-05-06', 4),
@@ -150,9 +150,9 @@ SELECT
     t.nome,
     ROUND (AVG(e.data_entrega_efetiva - e.data_envio), 1) AS prazo_medio_dias
     FROM entregas e
-    JOIN transportadoras t ON t.id_transportadora = e.id_transportadora
+    JOIN transportadoras t ON t.id_transportadora = e.id_transportadoras
     WHERE e.data_entrega_efetiva IS NOT null
-GROUP BY t.id_transportadora, t.nome;
+GROUP BY t.id_transportadoras, t.nome;
 
 
 --Qual o percentual de entregas feitas rigorosamente dentro do prazo prometido por transportadora?
@@ -161,19 +161,19 @@ SELECT
     COUNT(e.id_entregas) AS Total_de_entregas,
     ROUND(COUNT(CASE WHEN (e.data_entrega_efetiva - e.data_envio) <=  e.prazo_prometido_dias THEN 1 END) * 100.0 / COUNT(e.id_entregas), 2) AS taxa_SLA_percentual 
     FROM entregas e 
-    JOIN transportadoras t ON t.id_transportadora = e.id_transportadora
-GROUP BY t.id_transportadora, t.nome;
+    JOIN transportadoras t ON t.id_transportadoras = e.id_transportadoras
+GROUP BY t.id_transportadoras, t.nome;
 
 --Pergunta de Negócio: Unindo o menor custo de frete, menor taxa de falhas e o melhor cumprimento de prazos, qual parceiro lidera o ranking de eficiência?
-SELECT t.nome AS transportadora,
+SELECT t.nome AS transportadoras,
     COUNT(e.id_entregas) AS total_de_entregas,
     ROUND(AVG(e.valor_frete),2) AS media_vlr_frete,
     COUNT(CASE WHEN e.status_entrega =  'Falha' THEN 1 END) AS Total_de_falhas,
     ROUND(COUNT (CASE WHEN (e.data_entrega_efetiva - e.data_envio) <= e.prazo_prometido_dias THEN 1 END) * 100 / COUNT(e.id_entregas), 2) AS taxa_sla
 FROM entregas e
     JOIN transportadoras t
-    ON t.id_transportadora = e.id_transportadora
-GROUP BY t.id_transportadora, t.nome
+    ON t.id_transportadoras = e.id_transportadoras
+GROUP BY t.id_transportadoras, t.nome
 ORDER BY taxa_sla DESC, media_vlr_frete ASC;
 
 --todas as principais métricas calculadas em uma única estrutura limpa e centralizada para o time de BI
@@ -198,4 +198,4 @@ SELECT
 FROM pedidos p
 JOIN clientes c ON c.id_clientes = p.id_clientes
 LEFT JOIN entregas e ON e.id_pedidos = p.id_pedidos
-LEFT JOIN transportadora t ON t.id_transportadora = e.id_transportadora;
+LEFT JOIN transportadoras t ON t.id_transportadoras = e.id_transportadoras;
